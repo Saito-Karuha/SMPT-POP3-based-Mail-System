@@ -32,16 +32,6 @@ cd GemMail_Project
 
 It is highly recommended to use a Python virtual environment.
 
-```bash
-# Create a virtual environment
-python -m venv venv
-
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
 # Install required packages
 pip install -r requirements.txt
 ```
