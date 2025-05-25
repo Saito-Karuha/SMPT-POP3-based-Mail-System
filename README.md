@@ -31,7 +31,7 @@ cd GemMail_Project
 ### Step 2: Install Dependencies
 
 It is highly recommended to use a Python virtual environment.
-
+```
 # Install required packages
 pip install -r requirements.txt
 ```
