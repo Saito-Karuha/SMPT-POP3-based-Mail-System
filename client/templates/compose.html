@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block title %}写邮件{% endblock %}
+
+{% block content %}
+
+
+<div class="compose-container">
+  <section class="email-list">
+    <h2>撰写新邮件</h2>
+    
+    <!-- 显示 flash 消息 -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for message in messages %}
+            <div class="alert">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('compose') }}" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="to">收件人:</label>
+            <input type="email" id="to" name="to" required>
+        </div>
+        <div class="form-group">
+            <label for="subject">主题:</label>
+            <input type="text" id="subject" name="subject">
+        </div>
+        <div class="form-group">
+            <label for="body">正文:</label>
+            <textarea id="body" name="body" rows="10"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="attachment">附件:</label>
+            <input type="file" id="attachment" name="attachment">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-send">发送</button>
+        </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

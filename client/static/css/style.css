@@ -1,0 +1,187 @@
+/* 基础样式 */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f5ff; /* 更浅的浅蓝背景 */
+    color: #3a4d8f; /* 浅一点的深蓝字体 */
+}
+
+header {
+    background-color: #3a4d8f; /* 浅一点的深蓝头部 */
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.user-info {
+    font-size: 0.9rem;
+}
+
+.btn-logout{
+    color: #f799a9; /* 浅粉红红色 */
+}
+
+/* 登录页 */
+.login-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(58, 77, 143, 0.2); /* 更浅的蓝色阴影 */
+}
+
+/* 邮件列表 */
+.email-container {
+    display: flex;
+    min-height: calc(100vh - 60px);
+}
+
+.sidebar {
+    width: 200px;
+    background: #7a9de8; /* 浅蓝色侧边栏 */
+    color: white;
+    padding: 1rem;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar ul li {
+    padding: 10px 0;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+/* 选中激活项 */
+.sidebar ul li.active,
+.sidebar ul li:hover {
+    background-color: #a3bbff; /* 更浅的浅蓝高亮 */
+    color: #2a3a6a; /* 浅一点的深蓝文字 */
+}
+
+/* 邮件列表区域 */
+.email-list {
+    flex: 1;
+    padding: 1rem;
+    background: white;
+    box-shadow: 0 0 10px rgba(163, 187, 255, 0.3);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #d3e0ff; /* 更浅的淡蓝边框 */
+}
+
+tr:hover {
+    background-color: #f0f5ff; /* 更浅的浅蓝悬浮 */
+}
+
+/* 按钮样式 */
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #7a9de8; /* 更浅明亮蓝 */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+    background: #5a7bd6; /* 更浅深蓝悬浮 */
+}
+
+.btn-delete {
+    background: #f799a9; /* 浅粉红红色 */
+}
+
+.btn-delete:hover {
+    background: #e67683;
+}
+
+/* 撰写邮件 */
+.compose-container {
+    max-width: 800px;
+    margin: 1rem auto;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(122, 157, 232, 0.2);
+}
+
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #bbcdfd; /* 更浅的浅蓝边框 */
+    border-radius: 4px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.email-detail, .email-list, .compose-container, .login-container {
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
+/* 撰写邮件表单内标签和输入框样式调整 */
+.compose-container form label {
+    display: block;
+    margin-top: 10px;    /* 每个标签上方间距 */
+    margin-bottom: 6px;  /* 标签与输入框之间距离 */
+    font-weight: 600;
+    font-size: 1rem;
+    color: #3a4d8f;
+}
+
+.compose-container form input[type="text"],
+.compose-container form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #bbcdfd;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.6;        /* 行高，增加行间距 */
+    color: #3a4d8f;
+    box-sizing: border-box;
+}
+
+.compose-container form textarea {
+    margin-bottom: 20px;     /* 正文下面额外留白 */
+    resize: vertical;
+    white-space: pre-wrap;   /* 保留换行 */
+}
+
+/* 发送按钮与整体布局保持一致 */
+.compose-container form button[type="submit"] {
+    background: #7a9de8;
+    color: white;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.compose-container form button[type="submit"]:hover {
+    background: #5a7bd6;
+}
+
+

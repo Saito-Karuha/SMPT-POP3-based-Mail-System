@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+
+{% block title %}查看邮件{% endblock %}
+
+{% block content %}
+<div class="email-detail">
+    <h2>{{ email.subject }}</h2>
+    <p><strong>发件人：</strong> {{ email.sender }}</p>
+    <p><strong>收件人：</strong> {{ email.to }}</p>
+    <p><strong>日期：</strong> {{ email.date }}</p>
+    <hr>
+    <pre>{{ email.body }}</pre>
+    
+    {% if email.attachments %}
+    <hr>
+    <div style="margin-left: 20px;">
+      <h4>附件：</h4>
+      <ul>
+          {% for attachment in email.attachments %}
+          <li>
+              <a href="{{ url_for('download_file', filename=attachment.filename) }}">
+                  {{ attachment.filename }}
+              </a>
+          </li>
+          {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div style="margin-left: 20px;">
+      <a href="{{ url_for('inbox') }}" class="btn">← 返回收件箱</a>
+    </div>
+</div>
+{% endblock %}
