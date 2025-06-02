@@ -102,12 +102,32 @@ class MainWindow(QMainWindow):
     def prompt_login(self):
         dialog = LoginDialog(self)
         if dialog.exec():
+            server_ip, email, password = dialog.get_credentials() #
+            
+            try:
+                # 在这里将用户的 email 传递给 EmailHandler 的构造函数
+                self.email_handler = EmailHandler(user_email=email, smtp_host=server_ip, pop3_host=server_ip) 
+            except Exception as e:
+                QMessageBox.critical(self, "连接错误", f"无法创建EmailHandler: {e}")
+                self.close()
+                return
+
+            self.current_user = email
+            self.current_password = password
+            self.user_label.setText(f"欢迎, {email}")
+            self.show_inbox()
+        else:
+            self.close()
+
+    def prompt_login(self):
+        dialog = LoginDialog(self)
+        if dialog.exec():
             # 获取包含服务器IP的凭据
             server_ip, email, password = dialog.get_credentials()
             
             # 使用用户输入的IP地址来初始化EmailHandler
             try:
-                self.email_handler = EmailHandler(smtp_host=server_ip, pop3_host=server_ip)
+                self.email_handler = EmailHandler(user_email=email, smtp_host=server_ip, pop3_host=server_ip)
             except Exception as e:
                 QMessageBox.critical(self, "连接错误", f"无法创建EmailHandler: {e}")
                 self.close()

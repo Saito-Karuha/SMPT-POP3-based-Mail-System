@@ -24,8 +24,9 @@ def initialize_database():
         )
     ''')
     sample_users = {
-        "user1@gemmail.com": "password123",
-        "user2@gemmail.com": "password123"
+        "user1@gemmail.com": "1",
+        "user2@gemmail.com": "1",
+        "user3@gemmail.com": "1",
     }
     for email, password in sample_users.items():
         cursor.execute("SELECT email FROM users WHERE email = ?", (email,))
@@ -39,3 +40,5 @@ def initialize_database():
 # 在直接运行时，初始化数据库
 if __name__ == '__main__':
     initialize_database()
+
+# user1@gemmail.com
