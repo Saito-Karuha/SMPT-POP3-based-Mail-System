@@ -9,7 +9,7 @@
   <section class="email-list">
     <h2>撰写新邮件</h2>
     
-    <!-- 显示 flash 消息 -->
+    <!-- 显示 flash 消息
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         <div class="flash-messages">
@@ -18,7 +18,7 @@
           {% endfor %}
         </div>
       {% endif %}
-    {% endwith %}
+    {% endwith %} -->
 
     <form method="POST" action="{{ url_for('compose') }}" enctype="multipart/form-data">
         <div class="form-group">

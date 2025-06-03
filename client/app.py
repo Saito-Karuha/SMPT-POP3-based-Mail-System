@@ -1,12 +1,15 @@
-from flask import Flask, render_template, request, redirect, session, url_for, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, session, url_for, flash, send_from_directory, send_file, abort
 from werkzeug.utils import secure_filename
 from core.email_handler import EmailHandler
 from urllib.parse import unquote
 from flask import jsonify
 from datetime import datetime
+from email import message_from_bytes
 import os
 import uuid
 from email.header import decode_header
+import tempfile
+import io
 
 
 app = Flask(__name__)
@@ -106,7 +109,6 @@ def get_attachments_from_msg(msg, save_folder='attachments'):
     每个附件字典包含：filename
     """
     attachments = []
-    os.makedirs(save_folder, exist_ok=True)
 
     for part in msg.walk():
         content_disposition = str(part.get("Content-Disposition", ""))
@@ -116,17 +118,18 @@ def get_attachments_from_msg(msg, save_folder='attachments'):
         filename = part.get_filename()
         if filename:
             filename = decode_mime_words(filename)  # 解码文件名
+            print(filename)
             unique_filename = f"{uuid.uuid4().hex}_{filename}"
             filepath = os.path.join(save_folder, unique_filename)
             try:
-                with open(filepath, "wb") as f:
-                    f.write(part.get_payload(decode=True))
                 attachments.append({
                     "filename": unique_filename,
                     "original_filename": filename  # 保存原始（解码后）文件名，方便前端显示
                 })
             except Exception as e:
                 print(f"保存附件失败: {e}")
+            
+        print(attachments)
 
     return attachments
 
@@ -210,6 +213,56 @@ def view_email():
 
     return render_template('view_email.html', email=email)
 
+@app.route('/download_attachment')
+def download_attachment():
+    if 'user' not in session:
+        flash('请先登录')
+        return redirect(url_for('login'))
+    
+    eml_path = request.args.get('eml_path')
+    filename = request.args.get('filename')
+    
+    if not eml_path or not filename:
+        flash('缺少邮件路径或附件名')
+        return redirect(url_for('inbox'))
+    
+    # 解码url，防止路径问题
+    from urllib.parse import unquote
+    eml_path = unquote(eml_path)
+    
+    if not os.path.exists(eml_path):
+        flash('邮件文件不存在')
+        return redirect(url_for('inbox'))
+    
+    try:
+        with open(eml_path, 'rb') as f:
+            msg = message_from_bytes(f.read())
+        
+        # 在邮件中找到对应附件
+        for part in msg.walk():
+            content_disposition = str(part.get("Content-Disposition", "")).lower()
+            part_filename = part.get_filename()
+            if part_filename:
+                # 解码附件名
+                part_filename_decoded = decode_mime_words(part_filename)
+                if part_filename_decoded == filename and "attachment" in content_disposition:
+                    attachment_data = part.get_payload(decode=True)
+                    if attachment_data is None:
+                        break
+                    # 用 BytesIO 包装，模拟文件流
+                    return send_file(
+                        io.BytesIO(attachment_data),
+                        as_attachment=True,
+                        download_name=part_filename_decoded,
+                        mimetype=part.get_content_type()
+                    )
+        flash('未找到附件')
+        return redirect(url_for('view_email', path=eml_path))
+    except Exception as e:
+        flash(f'读取附件失败: {e}')
+        return redirect(url_for('view_email', path=eml_path))
+
+
 @app.route('/trash')
 def trash():
     if 'user' not in session:
@@ -219,26 +272,10 @@ def trash():
         smtp_host=session['server'],
         pop3_host=session['server']
     )
-    # 垃圾箱邮件存放路径
-    # trash_emails = email_handler.get_local_emails(email_handler.trash_storage_path)
-    return None
-    # return render_template('trash.html', emails=trash_emails)
+    trash_emails = email_handler.get_local_emails(email_handler.trash_storage_path)
+    print(f"[TRASH] Loaded {len(trash_emails)} emails from local storage")
+    return render_template('trash.html', emails=trash_emails)
 
-@app.route('/download/<path:filename>')
-def download_file(filename):
-    if 'user' not in session:
-        return redirect(url_for('login'))
-
-    print(filename)
-
-    for file in os.listdir(app.config['UPLOAD_FOLDER']):
-        print(file)
-        if file in filename:
-            filename = file
-    
-
-    # 严格控制只允许下载 UPLOAD_FOLDER 内部文件
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
 @app.route('/logout')
 def logout():
@@ -277,6 +314,7 @@ def compose():
         print(f"[COMPOSE] Form data - to: {to}, subject: {subject}, body length: {len(body) if body else 0}")
 
         attachment_path = None
+
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             

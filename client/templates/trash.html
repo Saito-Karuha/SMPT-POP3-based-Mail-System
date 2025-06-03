@@ -5,40 +5,37 @@
 {% block content %}
 <div class="email-container">
     <div class="sidebar">
-        <a href="{{ url_for('compose') }}" class="btn compose-btn">✉ 写邮件</a>
-        <ul class="folder-list">
-            <li><a href="{{ url_for('inbox') }}">📥 收件箱</a></li>
-            <li><a href="{{ url_for('sent') }}">📤 已发送</a></li>
+            <a href="{{ url_for('compose') }}" class="btn compose-btn"> ✉ 写邮件</a>
+            <a href="{{ url_for('inbox') }}" class="btn compose-btn">📥 收件箱</a>
+            <a href="{{ url_for('sent') }}" class="btn compose-btn">📤 已发送</a>
             <li class="active"><a href="{{ url_for('trash') }}" class="btn compose-btn">🗑️ 垃圾箱</a></li>
-        </ul>
     </div>
     <div class="email-list">
         <h2>垃圾箱</h2>
+        <div class="search-box">
+        <input type="text" placeholder="搜索邮件...">
+        </div>
         <table>
-            <thead>
-                <tr>
-                    <th width="25%">发件人</th>
-                    <th width="45%">主题</th>
-                    <th width="20%">日期</th>
-                    <th width="10%">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for email in emails %}
-                <tr data-id="{{ loop.index }}">
-                    <td>{{ email.from }}</td>
-                    <td>
-                        <a href="{{ url_for('view_email', email_id=loop.index) }}">
-                            {{ email.subject|truncate(50) }}
-                        </a>
-                    </td>
-                    <td>{{ email.date }}</td>
-                    <td><button class="btn-delete">删除</button></td>
-                </tr>
-                {% else %}
-                <tr><td colspan="4">垃圾箱为空</td></tr>
-                {% endfor %}
-            </tbody>
+        <thead>
+            <tr>
+            <th width="25%">发件人</th>
+            <th width="45%">主题</th>
+            <th width="20%">日期</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for email in emails %}
+            <tr data-id="{{ email.id }}" style="cursor: pointer;" onclick="window.location.href='{{ url_for('view_email') }}?path={{ email.path | urlencode }}'">
+            <td>{{ email.from }}</td>
+            <td>{{ email.subject|truncate(50) }}</td>
+            <td>{{ email.date }}</td>
+            </tr>
+            {% else %}
+            <tr>
+            <td colspan="4">暂无邮件</td>
+            </tr>
+            {% endfor %}
+        </tbody>
         </table>
     </div>
 </div>

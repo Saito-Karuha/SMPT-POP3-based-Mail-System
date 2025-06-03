@@ -61,8 +61,10 @@ class EmailHandler:
         # 为收件箱和已发送文件夹创建不同的存储路径
         self.inbox_storage_path = 'eml_storage/inbox'
         self.sent_storage_path = 'eml_storage/sent'
+        self.trash_storage_path = 'eml_storage/trash'
         os.makedirs(self.inbox_storage_path, exist_ok=True)
         os.makedirs(self.sent_storage_path, exist_ok=True)
+        os.makedirs(self.trash_storage_path, exist_ok=True)
 
     def send_email(self, sender, recipient, subject, body, attachment_path=None):
         """发送邮件，支持附件，并在成功后本地保存。"""

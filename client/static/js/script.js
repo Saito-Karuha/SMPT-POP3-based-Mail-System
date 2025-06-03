@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } else {
           if (response.redirected) {
-            alert('邮件尝试发送完成，请刷新');
+            alert('邮件发送成功，请刷新');
             submitBtn.disabled = false;
             submitBtn.textContent = '发送';
           } else {
