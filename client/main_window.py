@@ -42,6 +42,8 @@ class MainWindow(QMainWindow):
         self.current_user = None
         self.current_password = None
         self.current_message = None 
+        self.current_message_is_encrypted = False # 新增标记，用于跟踪当前邮件是否已解密
+        self.current_decrypted_content = None # 新增，存储解密后的内容
         
         self.init_ui()
         self.email_viewer.anchorClicked.connect(self.save_attachment)
@@ -66,6 +68,10 @@ class MainWindow(QMainWindow):
         self.sent_button = QPushButton(" 已发送") # 新增“已发送”按钮
         self.sent_button.clicked.connect(self.show_sent_folder)
 
+         # 新增“垃圾邮件”按钮
+        self.spam_button = QPushButton(" 垃圾邮件")
+        self.spam_button.clicked.connect(self.show_spam_folder) # 需要创建 show_spam_folder 方法
+
         self.refresh_button = QPushButton(" 刷新")
         self.refresh_button.clicked.connect(self.show_inbox) # 刷新应该重新加载收件箱
 
@@ -73,6 +79,7 @@ class MainWindow(QMainWindow):
         left_panel.addWidget(self.compose_button)
         left_panel.addWidget(self.inbox_button)
         left_panel.addWidget(self.sent_button) # 将按钮添加到布局
+        left_panel.addWidget(self.spam_button) #
         left_panel.addWidget(self.refresh_button)
         left_panel.addStretch()
         
@@ -141,50 +148,102 @@ class MainWindow(QMainWindow):
             self.close()
 
     def show_inbox(self):
-        """获取并显示服务器收件箱的邮件。"""
-        if not self.current_user:
+        if not self.current_user or not self.email_handler:
+            # print("用户未登录或 email_handler 未初始化，无法显示收件箱。")
+            if not self.current_user: # 如果是未登录，prompt_login会处理
+                 self.prompt_login() # 确保登录流程被调用
             return
+        
+        # fetch_inbox 现在只下载新邮件并分类存储。
+        # UI的刷新应基于 get_local_emails。
+        # 所以，首先触发一次 fetch (在后台)
         self.email_list.clear()
         self.email_viewer.clear()
-        self.email_list.addItem("正在从服务器获取邮件...")
-        
-        # 使用工作线程防止UI冻结
+        self.current_message = None
+        self.email_list.addItem("正在从服务器获取新邮件并刷新...")
+
         self.worker = EmailWorker(self.email_handler, "fetch", (self.current_user, self.current_password))
-        self.worker.finished.connect(self.on_fetch_finished)
+        # on_fetch_finished 会被调用，它内部再调用 show_folder_contents
+        self.worker.finished.connect(self.on_fetch_finished) 
         self.worker.start()
 
     def on_fetch_finished(self, result):
         self.email_list.clear()
-        success, data = result
+        success, data_from_fetch = result # data_from_fetch 是新下载的邮件列表
+        
         if success:
-            # 加载本地收件箱的邮件以显示完整历史
-            all_emails = self.email_handler.get_local_emails(self.email_handler.inbox_storage_path)
-            
-            if not all_emails:
-                self.email_list.addItem("收件箱是空的。")
-            else:
-                for email_data in all_emails:
-                    item_text = f"发件人: {email_data.get('from', 'N/A')}\n主题: {email_data.get('subject', '无主题')}"
-                    item = QListWidgetItem(item_text)
-                    item.setData(Qt.ItemDataRole.UserRole, email_data) # 存储完整数据
-                    self.email_list.addItem(item)
+            # print(f"Fetched {len(data_from_fetch)} new emails.")
+            # fetch_inbox 返回的已经是包含 is_spam 标记的邮件列表
+            # get_local_emails 会加载包括新下载在内的所有本地邮件，并进行动态分类
+            # 因此，我们直接调用 get_local_emails 来刷新收件箱视图
+            # 这也确保了如果 get_local_emails 内部移动了邮件到垃圾箱，视图能正确反映
+            self.show_folder_contents(self.email_handler.inbox_storage_path, "收件箱")
         else:
-            QMessageBox.critical(self, "错误", data)
+            QMessageBox.critical(self, "错误", f"获取邮件失败: {data_from_fetch}")
+            # 如果获取失败，仍尝试加载本地缓存的收件箱
+            self.show_folder_contents(self.email_handler.inbox_storage_path, "收件箱 (缓存)")
 
-    def show_sent_folder(self):
-        """显示本地“已发送”文件夹中的邮件。"""
+    # 新增一个通用方法来显示任何文件夹的内容
+    def show_folder_contents(self, folder_path, folder_name_display):
         self.email_list.clear()
         self.email_viewer.clear()
-        self.email_list.addItem("正在加载已发送邮件...")
+        self.current_message = None
+
+        if not self.email_handler:
+             self.email_list.addItem(f"{folder_name_display} 未加载 (邮件处理器未初始化)。")
+             return
+
+        self.email_list.addItem(f"正在加载 {folder_name_display} 中的邮件...")
         
-        sent_emails = self.email_handler.get_local_emails(self.email_handler.sent_storage_path)
+        # get_local_emails 现在会处理收件箱的动态分类
+        # 对于其他文件夹（已发送、垃圾邮件），它只是加载内容
+        local_emails = self.email_handler.get_local_emails(folder_path)
+        self.email_list.clear()
+
+        if not local_emails:
+            self.email_list.addItem(f"{folder_name_display} 是空的。")
+        else:
+            for email_data in local_emails:
+                sender_key = 'from' if folder_path == self.email_handler.inbox_storage_path or folder_path == self.email_handler.spam_storage_path else 'to'
+                item_text = f"{'发件人' if sender_key == 'from' else '收件人'}: {email_data.get(sender_key, 'N/A')}\n主题: {email_data.get('subject', '无主题')}"
+                
+                # 可选：为垃圾邮件添加视觉提示
+                if email_data.get('is_spam') and folder_path != self.email_handler.spam_storage_path: # 如果在收件箱但标记为垃圾邮件 (理论上不应发生，因已被移动)
+                    item_text = "[疑似垃圾邮件] " + item_text
+                elif folder_path == self.email_handler.spam_storage_path:
+                     item_text = "[垃圾邮件] " + item_text
+
+                item = QListWidgetItem(item_text)
+                item.setData(Qt.ItemDataRole.UserRole, email_data)
+                self.email_list.addItem(item)
+
+    def show_sent_folder(self):
+        if not self.email_handler: return
+        self.show_folder_contents(self.email_handler.sent_storage_path, "已发送")
+    
+    def show_spam_folder(self):
+        """显示本地“垃圾邮件”文件夹中的邮件。"""
+        if not self.email_handler:
+            QMessageBox.warning(self, "提示", "邮件处理器未初始化。")
+            return
+            
+        self.email_list.clear()
+        self.email_viewer.clear()
+        self.current_message = None # 清除当前邮件状态
+        self.email_list.addItem("正在加载垃圾邮件...")
+        
+        # self.email_handler.spam_storage_path 应该是用户专属的垃圾邮件路径
+        spam_emails = self.email_handler.get_local_emails(self.email_handler.spam_storage_path)
         self.email_list.clear()
         
-        if not sent_emails:
-            self.email_list.addItem("已发送文件夹是空的。")
+        if not spam_emails:
+            self.email_list.addItem("垃圾邮件文件夹是空的。")
         else:
-            for email_data in sent_emails:
-                item_text = f"收件人: {email_data.get('to', 'N/A')}\n主题: {email_data.get('subject', '无主题')}"
+            for email_data in spam_emails:
+                # 邮件列表项可以根据 is_spam 状态改变外观，不过这里都是垃圾邮件
+                item_text = f"发件人: {email_data.get('from', 'N/A')}\n主题: {email_data.get('subject', '无主题')}"
+                if email_data.get('is_spam'): # 可以加个标记，虽然在此文件夹理论上都为True
+                    item_text = "[垃圾邮件] " + item_text
                 item = QListWidgetItem(item_text)
                 item.setData(Qt.ItemDataRole.UserRole, email_data)
                 self.email_list.addItem(item)
@@ -192,62 +251,156 @@ class MainWindow(QMainWindow):
     def display_email(self, item):
         email_data = item.data(Qt.ItemDataRole.UserRole)
         if not email_data or 'path' not in email_data:
+            self.email_viewer.setPlainText("无法加载邮件数据。")
             return
 
-        with open(email_data['path'], 'rb') as f:
-            self.current_message = message_from_bytes(f.read())
+        self.current_message_is_encrypted = False # 重置状态
+        self.current_decrypted_content = None
+
+        try:
+            with open(email_data['path'], 'rb') as f:
+                self.current_message = message_from_bytes(f.read())
+        except Exception as e:
+            self.email_viewer.setPlainText(f"无法读取邮件文件: {e}")
+            return
         
         html_body = ""
         text_body = ""
         attachments = []
+        is_pgp_encrypted_email = False # 标记是否检测到PGP/MIME结构
+
+        # 检查邮件是否可能是PGP加密的 (基于 temp 中 decrypt_and_verify_email_from_message 的逻辑)
+        # 简单检查：Content-Type: multipart/encrypted 或存在 signature.asc 附件
+        # 一个更可靠的检查是在尝试解密时进行。
+        # 这里我们先做个初步判断，UI上可以提示用户。
         
-        if self.current_message.is_multipart():
+        # 简单的PGP结构检测 (不完美，但可用于UI提示)
+        # PGP/MIME 签名邮件是 multipart/signed
+        # PGP/MIME 加密邮件是 multipart/encrypted
+        content_type_header = self.current_message.get_content_type()
+        if content_type_header == 'multipart/encrypted':
+            is_pgp_encrypted_email = True
+            # 对于加密邮件，我们通常不直接显示其内部结构，而是尝试解密
+            # 暂不遍历其 parts，直接在下面尝试解密
+        elif self.current_message.is_multipart():
             for part in self.current_message.walk():
-                content_type = part.get_content_type()
-                content_disposition = str(part.get("Content-Disposition"))
-                
-                if "attachment" in content_disposition:
-                    filename = part.get_filename()
-                    if filename:
-                        attachments.append(filename)
-                elif content_type == "text/html" and not html_body:
-                    html_body = part.get_payload(decode=True).decode(part.get_content_charset() or 'utf-8', errors='ignore')
-                elif content_type == "text/plain" and not text_body:
-                    text_body = part.get_payload(decode=True).decode(part.get_content_charset() or 'utf-8', errors='ignore')
-        else: # 非 multipart 邮件
-            if self.current_message.get_content_type() == "text/html":
-                html_body = self.current_message.get_payload(decode=True).decode(self.current_message.get_content_charset() or 'utf-8', errors='ignore')
-            else: # 默认视为纯文本
-                text_body = self.current_message.get_payload(decode=True).decode(self.current_message.get_content_charset() or 'utf-8', errors='ignore')
+                if part.get_filename() == "signature.asc" and part.get_content_type() == "application/pgp-signature":
+                    # 这更像是一个签名的邮件，可能加密也可能不加密。
+                    # 如果邮件主体是 text/plain 且看起来是 PGP block，也可能是加密的。
+                    # is_pgp_encrypted_email = True # 暂定，需要解密才能确认
+                    pass # 发现签名，但主体是否加密待定
+                # 进一步检查是否存在PGP加密的数据块（通常是 application/octet-stream 作为第一部分）
+                # 或 text/plain 但内容是 BEGIN PGP MESSAGE
+                if part.get_content_type() == 'application/octet-stream' and not part.get_filename():
+                    # 可能是加密数据
+                    pass
+
+        # 如果检测到或怀疑是加密邮件，这里可以尝试解密 (需要密钥路径和密码)
+        # 目前我们没有UI获取这些，所以只做个标记或显示提示
+        if is_pgp_encrypted_email: # 或者更复杂的判断
+            self.current_message_is_encrypted = True
+            # TODO: 将来在这里添加调用解密逻辑的UI交互
+            # 例如: decrypted_content = self.prompt_for_decryption_keys_and_decrypt(self.current_message)
+            # if decrypted_content:
+            #    text_body = decrypted_content # 解密后通常是纯文本
+            #    html_body = "" # 或者，如果解密后内容本身是HTML标记...
+            # else:
+            #    text_body = "此邮件已加密。请提供密钥以解密。\n\n" + self.current_message.as_string()
+            placeholder_encrypted_text = "此邮件内容已加密。查看功能需要PGP密钥。\n\n"
+            try:
+                # 尝试提取加密文本部分给用户看个大概
+                for part in self.current_message.walk():
+                    if part.get_content_type() == 'application/octet-stream' and not part.get_filename(): # PGP/MIME 加密数据部分
+                         payload = part.get_payload(decode=True)
+                         placeholder_encrypted_text += payload.decode('ascii', errors='ignore') # 加密数据通常是ASCII
+                         break
+                    elif part.get_content_type() == 'text/plain' and not part.get_filename(): # 有时加密内容在text/plain
+                         payload = part.get_payload(decode=True)
+                         text_content = payload.decode(part.get_content_charset() or 'utf-8', errors='ignore')
+                         if "BEGIN PGP MESSAGE" in text_content:
+                            placeholder_encrypted_text += text_content
+                            break
+                text_body = placeholder_encrypted_text
+            except Exception:
+                 text_body = "此邮件已加密，且无法预览其原始加密文本。"
+
+
+        # 如果不是（或未能成功解密）加密邮件，则按原方式处理
+        if not self.current_message_is_encrypted or not text_body: # 如果没被标记为加密，或标记了但没有解密内容
+            if self.current_message.is_multipart():
+                for part in self.current_message.walk():
+                    content_type = part.get_content_type()
+                    content_disposition = str(part.get("Content-Disposition"))
+                    
+                    if "attachment" in content_disposition:
+                        filename = part.get_filename()
+                        if filename:
+                            attachments.append(filename)
+                    elif content_type == "text/html" and not html_body: # 只取第一个HTML部分
+                        payload = part.get_payload(decode=True)
+                        charset = part.get_content_charset() or 'utf-8'
+                        html_body = payload.decode(charset, errors='ignore')
+                    elif content_type == "text/plain" and not text_body and not html_body: # 如果没有HTML，或HTML优先但没找到，则用纯文本
+                        payload = part.get_payload(decode=True)
+                        charset = part.get_content_charset() or 'utf-8'
+                        text_body = payload.decode(charset, errors='ignore')
+            else: # 非 multipart 邮件
+                payload = self.current_message.get_payload(decode=True)
+                charset = self.current_message.get_content_charset() or 'utf-8'
+                if self.current_message.get_content_type() == "text/html":
+                    html_body = payload.decode(charset, errors='ignore')
+                else: 
+                    text_body = payload.decode(charset, errors='ignore')
         
         # 优先显示HTML，如果没有则显示纯文本
-        display_body = html_body if html_body else f"<pre>{text_body}</pre>"
+        display_body = html_body if html_body else f"<pre>{text_body}</pre>" # 用<pre>保留纯文本格式
 
         headers_html = f"""
-        <b>发件人:</b> {self.current_message['From']}<br>
-        <b>收件人:</b> {self.current_message['To']}<br>
-        <b>主题:</b> {self.current_message['Subject']}<br>
-        <b>日期:</b> {self.current_message['Date']}<br>
+        <b>发件人:</b> {self.current_message.get('From', 'N/A')}<br>
+        <b>收件人:</b> {self.current_message.get('To', 'N/A')}<br>
+        <b>主题:</b> {self.current_message.get('Subject', 'N/A')}<br>
+        <b>日期:</b> {self.current_message.get('Date', 'N/A')}<br>
         """
-        
+        if email_data.get('is_spam'):
+            headers_html = "<i><font color='red'>[此邮件被分类为垃圾邮件]</font></i><br>" + headers_html
+        if self.current_message_is_encrypted and not self.current_decrypted_content: # 提示邮件已加密
+             headers_html += "<i><font color='orange'>[此邮件内容已加密]</font></i><br>"
+
+
         attachments_html = ""
         if attachments:
             attachments_html += "<b>附件 (点击文件名可下载):</b><br>"
             for filename in attachments:
-                attachments_html += f'&nbsp;&nbsp; - <a href="attachment:{filename}">{filename}</a><br>'
+                # 确保文件名是字符串，并且清理一下以防万一
+                safe_filename = str(filename) if filename else "untitled_attachment"
+                attachments_html += f'&nbsp;&nbsp; - <a href="attachment:{safe_filename}">{safe_filename}</a><br>'
         
         final_html = headers_html + attachments_html + "<hr>" + display_body
         self.email_viewer.setHtml(final_html)
         
     def open_compose_window(self):
-        if not self.current_user:
+        if not self.current_user or not self.email_handler: # 检查 email_handler 也被初始化
             QMessageBox.warning(self, "提示", "请先登录！")
             return
         
+        # TODO: ComposeWindow 将来需要有UI选项来启用加密并选择密钥文件
+        # encrypt_enabled, sender_key, sender_pass, recipient_key = dialog.get_encryption_settings()
+        
         dialog = ComposeWindow(self.current_user, self)
         if dialog.exec():
-            email_data = dialog.get_email_data()
-            self.worker = EmailWorker(self.email_handler, "send", (self.current_user, self.current_password), email_data)
+            email_data = dialog.get_email_data() # 包含 sender, recipient, subject, body, attachment_path
+
+            # 为 PGP 参数准备默认值 (目前为不加密)
+            email_data['encrypt'] = False 
+            email_data['sender_private_key_path'] = None # dialog 中应提供选择
+            email_data['sender_private_key_passphrase'] = None # dialog 中应提供输入
+            email_data['recipient_public_key_path'] = None # dialog 中应提供选择
+
+            # EmailWorker 的 'send' action 的 data 参数现在需要包含所有 send_email 的参数
+            self.worker = EmailWorker(handler=self.email_handler, 
+                                     action="send", 
+                                     credentials=(self.current_user, self.current_password), # 凭据可能不需要用于发送，但保持结构一致
+                                     data=email_data) # email_data 包含所有发送参数
             self.worker.finished.connect(self.on_send_finished)
             self.worker.start()
             

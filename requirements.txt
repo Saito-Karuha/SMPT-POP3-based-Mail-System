@@ -1,2 +1,7 @@
 PyQt6
 aiosmtpd
+pandas
+jieba
+tqdm
+beautifulsoup4
+pgpy
