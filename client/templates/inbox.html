@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+
+{% block title %}收件箱{% endblock %}
+
+{% block content %}
+<div class="email-container">
+  <div class="sidebar">
+        <a href="{{ url_for('compose') }}" class="btn compose-btn"> ✉ 写邮件</a>
+        <li class="active"><a href="{{ url_for('inbox') }}" class="btn compose-btn">📥 收件箱</a></li>
+        <a href="{{ url_for('sent') }}" class="btn compose-btn">📤 已发送</a>
+        <a href="{{ url_for('trash') }}" class="btn compose-btn">🗑️ 垃圾箱</a>
+  </div>
+
+  <section class="email-list">
+    <h2>收件箱</h2>
+    <div class="search-box">
+      <input type="text" placeholder="搜索邮件...">
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th width="25%">发件人</th>
+          <th width="45%">主题</th>
+          <th width="20%">日期</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for email in emails %}
+        <tr data-id="{{ email.id }}" style="cursor: pointer;" onclick="window.location.href='{{ url_for('view_email') }}?path={{ email.path | urlencode }}'">
+          <td>{{ email.from }}</td>
+          <td>{{ email.subject|truncate(50) }}</td>
+          <td>{{ email.date }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4">暂无邮件</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // 删除邮件事件绑定
+  document.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+
+      const tr = btn.closest('tr');
+      if (!tr) return;
+
+      const emailId = tr.dataset.id;
+      if (!emailId) return;
+
+      if (!confirm('确定要删除这封邮件吗？')) return;
+
+      try {
+        const response = await fetch(`/emails/${emailId}`, { method: 'DELETE' });
+        if (response.ok) {
+          tr.remove();
+          alert('邮件已删除');
+        } else {
+          alert('删除失败');
+        }
+      } catch (error) {
+        alert('删除出错: ' + error.message);
+      }
+    });
+  });
+
+  // 搜索过滤功能
+  const searchInput = document.querySelector('.search-box input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.trim().toLowerCase();
+      document.querySelectorAll('tbody tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+  }
+});
+</script>
+{% endblock %}

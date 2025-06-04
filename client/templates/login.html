@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block title %}登录{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <h2>登录邮箱</h2>
+    
+    {% if get_flashed_messages() %}
+        <div class="flash-messages">
+            {% for message in get_flashed_messages() %}
+                <p style="color:red;">{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+            <label for="email">邮箱地址:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label for="password">邮箱密码:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div class="form-group">
+            <label for="server">SMTP/POP3服务器:</label>
+            <input type="text" id="server" name="server" placeholder="如 smtp.163.com" required value="127.0.0.1">
+        </div>
+        <button type="submit" class="btn btn-primary">登录</button>
+    </form>
+</div>
+{% endblock %}

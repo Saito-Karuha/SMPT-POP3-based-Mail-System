@@ -5,3 +5,4 @@ jieba
 tqdm
 beautifulsoup4
 pgpy
+Flask
