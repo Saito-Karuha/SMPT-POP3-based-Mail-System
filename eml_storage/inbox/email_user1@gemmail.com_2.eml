@@ -1,0 +1,23 @@
+Content-Type: multipart/mixed; boundary="===============5755033737210503396=="
+MIME-Version: 1.0
+From: user2@gemmail.com
+To: user1@gemmail.com
+Subject: =?utf-8?q?123n?=
+Date: Mon, 02 Jun 2025 23:11:43 +0800
+
+--===============5755033737210503396==
+Content-Type: text/html; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+
+MTIzbg==
+
+--===============5755033737210503396==
+Content-Type: application/octet-stream
+MIME-Version: 1.0
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=requirements.txt
+
+UHlRdDYKYWlvc210cGQ=
+
+--===============5755033737210503396==--

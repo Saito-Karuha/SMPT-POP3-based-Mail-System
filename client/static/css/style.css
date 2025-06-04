@@ -199,7 +199,7 @@ z-index: -1; /* 放在内容后面 */
 pointer-events: none; /* 允许点击穿透 */
 }
 
-body.compose-page #particles {
+body.view-email-page #particles {
     display: none;
 }
 
