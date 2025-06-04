@@ -10,6 +10,7 @@ import uuid
 from email.header import decode_header
 import tempfile
 import io
+import requests
 
 app = Flask(__name__)
 app.secret_key = 'gemmail_secret_key_123456' # 建议使用更安全的密钥，并从配置中加载
@@ -422,6 +423,38 @@ def download_attachment():
         flash(f"下载附件时出错: {e}", "error")
 
     return redirect(request.referrer or url_for('view_email', path=eml_file_path_encoded))
+
+GLM_API_KEY = "b7eb871b1d4748d797d716c0bd4ebea1.chiW0V2AWBdZlo4j"
+GLM_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+
+def call_glm_api(question):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GLM_API_KEY}"
+    }
+    payload = {
+        "model": "glm-4",  # 或根据你的API文档选择模型
+        "messages": [
+            {"role": "user", "content": question}
+        ]
+    }
+    resp = requests.post(GLM_API_URL, headers=headers, json=payload, timeout=20)
+    resp.raise_for_status()
+    data = resp.json()
+    # 根据API返回结构解析
+    return data["choices"][0]["message"]["content"]
+
+@app.route('/ai_chat', methods=['POST'])
+def ai_chat():
+    data = request.get_json()
+    question = data.get('question', '').strip()
+    if not question:
+        return jsonify(success=False, message="问题不能为空")
+    try:
+        reply = call_glm_api(question)
+        return jsonify(success=True, reply=reply)
+    except Exception as e:
+        return jsonify(success=False, message=str(e))
 
 if __name__ == '__main__':
     # 这部分主要用于直接运行app.py进行测试，生产部署时会用Gunicorn等

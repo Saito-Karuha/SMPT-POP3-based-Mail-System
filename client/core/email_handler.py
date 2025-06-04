@@ -88,6 +88,7 @@ def predict_dataset(train_word_dict, spam_count, ham_count, data, stop_words):
     """
     使用朴素贝叶斯算法判断邮件是否为垃圾邮件。
     """
+    #print('predict_dataset')
     word_dict = data['word_dict']
     total_emails = spam_count + ham_count
     # 避免 spam_count 或 ham_count 为0导致 log(0)
@@ -100,15 +101,17 @@ def predict_dataset(train_word_dict, spam_count, ham_count, data, stop_words):
     for word, count in word_dict.items(): # count 在这里实际是1，表示出现
         if word in stop_words: # 此检查在 create_word_dict 中已部分完成，但双重检查无害
             continue
-        
+        #print(f"word: {word}")
         word_stats = train_word_dict.get(word, {"spam": 0, "ham": 0})
         # 拉普拉斯平滑
         p_word_given_spam = (word_stats["spam"] + 1) / (spam_count + 2) 
         p_word_given_ham = (word_stats["ham"] + 1) / (ham_count + 2)
-        
         log_likelihood_spam += math.log(p_word_given_spam)
         log_likelihood_ham += math.log(p_word_given_ham)
     
+    #print(f"log_p_spam+log_likelihood_spam: {log_p_spam + log_likelihood_spam}")
+    #print(f"log_p_ham+log_likelihood_ham: {log_p_ham + log_likelihood_ham}")
+    #time.sleep(100)
     return 1 if (log_p_spam + log_likelihood_spam) > (log_p_ham + log_likelihood_ham) else 0
 
 
@@ -187,6 +190,7 @@ def is_spam(email_content_text, train_word_dict, spam_count, ham_count, stop_wor
     word_dict = create_word_dict(email_content_text, stop_words)
     if not word_dict: # 如果文本处理后没有有效词汇
         return False
+    #print('GGGGGGGGGGGGGGGGGGGGGGGGGG')
     return predict_dataset(train_word_dict, spam_count, ham_count, {"word_dict": word_dict}, stop_words) == 1
 
 
