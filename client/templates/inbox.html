@@ -3,6 +3,9 @@
 {% block title %}收件箱{% endblock %}
 
 {% block content %}
+
+<canvas id="particles"></canvas>
+
 <div class="email-container">
   <div class="sidebar">
         <a href="{{ url_for('compose') }}" class="btn compose-btn"> ✉ 写邮件</a>
@@ -84,3 +87,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endblock %}
+
+
